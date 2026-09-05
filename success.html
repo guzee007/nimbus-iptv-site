@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Thank You — Nimbus IPTV</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    background: #0a0d14; color: #fff; margin: 0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .card {
+    background: #161e31; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px;
+    padding: 36px; max-width: 420px; width: 100%; text-align: center;
+  }
+  h1 { font-size: 20px; margin: 0 0 10px; }
+  p { color: #9aa4b8; font-size: 14px; margin: 0 0 4px; }
+  .key {
+    font-family: "SF Mono", Consolas, monospace; font-size: 20px; font-weight: 700;
+    background: #0f1422; border: 1px solid rgba(0,210,255,0.3); border-radius: 12px;
+    padding: 14px; margin: 20px 0; letter-spacing: 1px; color: #00d2ff; word-break: break-all;
+  }
+  button {
+    background: linear-gradient(90deg, #00d2ff, #0072ff); border: none; color: #fff;
+    font-weight: 700; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-size: 13px;
+  }
+  .muted { font-size: 12px; color: #6b7690; margin-top: 18px; }
+  .spinner {
+    width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.15); border-top-color: #00d2ff;
+    border-radius: 50%; margin: 0 auto 16px; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div id="spinner" class="spinner"></div>
+    <h1>🎉 Thanks for your purchase!</h1>
+    <p id="status">Finalizing your order…</p>
+    <div id="keyBox" class="key" style="display:none;"></div>
+    <button id="copyBtn" style="display:none;">Copy License Key</button>
+    <p class="muted">Open Nimbus IPTV → Settings → License → paste this key to unlock Pro.</p>
+  </div>
+
+<script>
+  // Set this to your deployed Worker URL after completing worker/README.md.
+  const WORKER_URL = 'https://REPLACE-WITH-YOUR-WORKER.workers.dev';
+
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session_id');
+  const statusEl = document.getElementById('status');
+  const keyBox = document.getElementById('keyBox');
+  const copyBtn = document.getElementById('copyBtn');
+  const spinner = document.getElementById('spinner');
+
+  function showKey(licenseKey) {
+    spinner.style.display = 'none';
+    statusEl.textContent = 'Your license key:';
+    keyBox.textContent = licenseKey;
+    keyBox.style.display = 'block';
+    copyBtn.style.display = 'inline-block';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(licenseKey);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => (copyBtn.textContent = 'Copy License Key'), 1500);
+    };
+  }
+
+  if (!sessionId) {
+    spinner.style.display = 'none';
+    statusEl.textContent = 'Missing order reference. Check your email receipt or contact support.';
+  } else {
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      try {
+        const res = await fetch(`${WORKER_URL}/license?session_id=${encodeURIComponent(sessionId)}`);
+        const data = await res.json();
+        if (data.licenseKey) {
+          showKey(data.licenseKey);
+          return;
+        }
+      } catch {
+        // ignore and retry
+      }
+      if (attempts < 10) {
+        setTimeout(poll, 2000);
+      } else {
+        spinner.style.display = 'none';
+        statusEl.textContent = 'Still processing — this can take a minute. Refresh this page shortly, or contact support with your order email.';
+      }
+    };
+    poll();
+  }
+</script>
+</body>
+</html>
